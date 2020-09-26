@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-# README  
-=======
 # README 
->>>>>>> 67ac4915c32ecad9d5a0ede27392f98b8db6d4cd
 
 ## compile the project:  
 gcc disassembler.c -o disasm  
@@ -11,7 +7,6 @@ gcc disassembler.c -o disasm
 ./disasm -i [input_file_name]  
 
 ## supported Intel x86 instructions and corresponding opcodes:  
-<<<<<<< HEAD
 add eax, imm32: 0x05 id \
 add r/m32, imm32: 0x81 /0x81 id \
 add r/m32, r32 : 0x01 /r \
