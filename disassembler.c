@@ -4,41 +4,44 @@
 #include <limits.h>
 #include "disassembler.h"
 
-long long offset = 0;
-long long* offsets = NULL;
-int id = 0;
-strbuf* head = NULL;
-strbuf* tail = NULL;
-char* buf = NULL;
-char* tempbuf = NULL;
-char* section = NULL;
+long long offset = 0;           // stores offset for current instruction
+long long* offsets = NULL;      // stores all offsets in the program
+int id = 0;                     // index of offsets[]
+strbuf* head = NULL;            // head of processed instructions
+strbuf* tail = NULL;            // tail of processed instructions
+char* buf = NULL;               // stores the whole line of print out for current instruction
+char* tempbuf = NULL;           // buffer for section of print out for current instruction
+char* section = NULL;           // buffer for section of print out for current instruction
 
 int main(int argc, char const *argv[]) {
+    // must use "-i" to specify input file
     if (argc < 3 || strcmp(argv[1], "-i")) {
         printf("Please specify the input file name using the '-i' option.\n");
         exit(1);
     }
+    // open the input file for read
     FILE *fp = fopen(argv[2], "rb");
     if (!fp) {
         printf("File %s does not exist.\n", argv[2]);
         exit(1);
     }
+    // calculate input file size
     fseek(fp, 0L, SEEK_END);
     int fsize = ftell(fp);
     fseek(fp, 0L, SEEK_SET);
     unsigned char* buffer = malloc(fsize);
     fread(buffer, fsize, 1, fp);
     fclose(fp);
-    
-    init_offset();
-    
-    buf = calloc(100, sizeof(char));
-    tempbuf = calloc(100, sizeof(char));
-    section = calloc(50, sizeof(char));
 
+    // initialize all the global buffers 
+    init_buf();
+
+    // disassemble instructions, increment by size of instruction
     int pc = 0;
     while (pc < fsize) 
         pc += disasm(buffer, pc);
+
+    // print out the whole disassembled program, add labels when needed
     while (head) {
         if (head->addr==offsets[0]) {
             printf("offset_%08Xh:\n", offsets[0]);
@@ -51,6 +54,7 @@ int main(int argc, char const *argv[]) {
     return 0;
 }
 
+// convert number representations to string representations for registers
 char* reg_name(int reg) {
     char* res = malloc(sizeof(char)*4);
     switch (reg) {
@@ -67,6 +71,7 @@ char* reg_name(int reg) {
     return res;
 }
 
+// disassemble MODR/M byte, return the MODE, REG, R/M bits in a struct
 drr* decode_MODRM(unsigned char modrm) {
     drr* res = malloc(sizeof(drr)*1);
     unsigned char temp = modrm;
@@ -105,6 +110,7 @@ drr* decode_MODRM(unsigned char modrm) {
     return res;
 }
 
+// stores the displacement part of instruction in buffer
 void print_DISP(drr* res, unsigned char* opcode) {
     int disp = res->disp;
     if (disp==1)
@@ -115,6 +121,7 @@ void print_DISP(drr* res, unsigned char* opcode) {
     memset(section, 0, 50);
 }
 
+// save the partial instructions to buffer and format the output
 void save_clean(int n) {
     if (n==1) {
         strcat(tempbuf, section);
@@ -129,16 +136,20 @@ void save_clean(int n) {
     }
 }
 
+// disassemble the program
 int disasm(unsigned char* buffer, int pc) {
     memset(buf, 0, 100);
     memset(tempbuf, 0, 100);
     memset(section, 0, 50);
+    // used to store current instruction
     strbuf* node = calloc(1, sizeof(strbuf));
     node->addr = ADDRESS + pc;
+    // instruction size minus the OPCODE byte
     unsigned int operand = 0;
     unsigned char* opcode = &buffer[pc];
     drr* res;
     offset = 0;
+    // address of instruction
     sprintf(buf, "0x%08X:\t", ADDRESS + pc);
 
     switch (*opcode) {
@@ -1543,16 +1554,22 @@ int disasm(unsigned char* buffer, int pc) {
     return OPBYTE+operand;
 }
 
-void init_offset() {
+// initialize all buffers used by allocate and clear memory
+void init_buf() {
     offsets = calloc(OFFSET_POOL, sizeof(long long));
+    buf = calloc(100, sizeof(char));
+    tempbuf = calloc(100, sizeof(char));
+    section = calloc(50, sizeof(char));
 }
 
+// comparison function used in qsort()
 int compare(const void *a, const void *b) {
     long long* x = (long long*) a; 
     long long* y = (long long*) b;
     return *x - *y;
 }
 
+// add an offset into offsets[] if unique, sort in ascending order
 void insert_offset(long long n) {
     for (int i = 0; i < id; i++) {
         if (offsets[i]==n && n!=0) 
@@ -1563,6 +1580,7 @@ void insert_offset(long long n) {
     id+=1;
 }
 
+// remove offset[0]
 void remove_offset() {
     for (int i = 0; i < OFFSET_POOL-1; i++) {
         offsets[i] = offsets[i+1];

@@ -33,7 +33,7 @@ typedef struct strbuf {
 } strbuf;
 
 // functions
-void init_offset();
+void init_buf();
 int compare(const void *a, const void *b);
 void insert_offset(long long n);
 void remove_offset();
